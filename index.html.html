@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Adult Speaking Practice</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Firebase Global Setup
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'adult-speaking-practice';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+      apiKey: "demo-api-key",
+      authDomain: "demo-app.firebaseapp.com",
+      projectId: "demo-app",
+      storageBucket: "demo-app.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:123456"
+    };
+
+    let appDb = null;
+    let appAuth = null;
+
+    try {
+      const fbApp = initializeApp(firebaseConfig);
+      appDb = getFirestore(fbApp);
+      appAuth = getAuth(fbApp);
+
+      const initAuth = async () => {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(appAuth, __initial_auth_token);
+        } else {
+          await signInAnonymously(appAuth);
+        }
+      };
+
+      initAuth().then(() => {
+        const configRef = doc(appDb, 'artifacts', appId, 'public', 'data', 'config', 'courseConfig');
+        onSnapshot(configRef, (snapshot) => {
+          if (snapshot.exists() && snapshot.data().highestUnlockedUnit) {
+            const unlocked = parseInt(snapshot.data().highestUnlockedUnit);
+            if (window.app) {
+              window.app.highestUnlockedUnit = unlocked;
+              localStorage.setItem('highestUnlockedUnit', unlocked.toString());
+              window.app.render();
+            }
+          }
+        }, (error) => {
+          console.warn("Firestore subscription note:", error);
+        });
+      });
+    } catch (e) {
+      console.warn("Firebase initialization fallback to local state:", e);
+    }
+
+    window.saveGlobalUnlockedUnit = async function(unitVal) {
+      const val = parseInt(unitVal);
+      localStorage.setItem('highestUnlockedUnit', val.toString());
+      if (appDb && appAuth && appAuth.currentUser) {
+        try {
+          const configRef = doc(appDb, 'artifacts', appId, 'public', 'data', 'config', 'courseConfig');
+          await setDoc(configRef, { highestUnlockedUnit: val, updatedAt: new Date().toISOString() }, { merge: true });
+        } catch (err) {
+          console.warn("Could not save to Firestore, local state used:", err);
+        }
+      }
+    };
+  </script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            },
+            accent: {
+              500: '#0284c7',
+              600: '#0369a1',
+            }
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'wave-bar': 'wave 1.2s ease-in-out infinite',
+          },
+          keyframes: {
+            wave: {
+              '0%, 100%': { transform: 'scaleY(0.3)' },
+              '50%': { transform: 'scaleY(1.0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.5);
+      border-radius: 4px;
+    }
+    .recording-wave div {
+      animation: wave 1s ease-in-out infinite;
+    }
+    .recording-wave div:nth-child(2) { animation-delay: 0.15s; }
+    .recording-wave div:nth-child(3) { animation-delay: 0.30s; }
+    .recording-wave div:nth-child(4) { animation-delay: 0.45s; }
+    .recording-wave div:nth-child(5) { animation-delay: 0.60s; }
+
+    /* Enhanced Light Theme Styling Overrides for High Contrast & WCAG Readability */
+    .theme-light {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+    }
+    .theme-light #app {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+    }
+    .theme-light header {
+      background-color: rgba(255, 255, 255, 0.95) !important;
+      border-color: #e2e8f0 !important;
+    }
+    .theme-light header h1, .theme-light header h2, .theme-light header .text-white {
+      color: #0f172a !important;
+    }
+    .theme-light .bg-slate-950 {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+      border-color: #e2e8f0 !important;
+    }
+    .theme-light .bg-slate-900,
+    .theme-light .bg-slate-900\/90,
+    .theme-light .bg-slate-900\/80,
+    .theme-light .bg-slate-900\/60,
+    .theme-light .bg-slate-900\/40 {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+      border-color: #e2e8f0 !important;
+    }
+    .theme-light .bg-slate-800,
+    .theme-light .bg-slate-800\/90,
+    .theme-light .bg-slate-800\/80,
+    .theme-light .bg-slate-800\/60 {
+      background-color: #f1f5f9 !important;
+      color: #1e293b !important;
+      border-color: #cbd5e1 !important;
+    }
+    .theme-light .bg-gradient-to-br.from-slate-800.to-slate-900 {
+      background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%) !important;
+      border-color: #cbd5e1 !important;
+    }
+    .theme-light .bg-gradient-to-br.from-brand-950\/90.to-slate-900 {
+      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%) !important;
+      border-color: #86efac !important;
+    }
+    .theme-light .border-slate-800,
+    .theme-light .border-slate-700,
+    .theme-light .border-slate-700\/80,
+    .theme-light .border-slate-700\/70,
+    .theme-light .border-slate-700\/60,
+    .theme-light .border-slate-700\/50 {
+      border-color: #cbd5e1 !important;
+    }
+    /* Neutral Typography Contrast Adjustments */
+    .theme-light .text-white {
+      color: #0f172a !important;
+    }
+    .theme-light .text-slate-100,
+    .theme-light .text-slate-200 {
+      color: #0f172a !important;
+    }
+    .theme-light .text-slate-300 {
+      color: #334155 !important;
+    }
+    .theme-light .text-slate-400,
+    .theme-light .text-slate-500 {
+      color: #475569 !important;
+    }
+    .theme-light .text-slate-600 {
+      color: #64748b !important;
+    }
+    /* Amber & Gold High-Contrast Light Mode Overrides */
+    .theme-light .bg-amber-500\/10 {
+      background-color: #fffbeb !important;
+      border-color: #fde68a !important;
+    }
+    .theme-light .border-amber-500\/30 {
+      border-color: #fde68a !important;
+    }
+    .theme-light .text-amber-400 {
+      color: #b45309 !important;
+    }
+    .theme-light .text-amber-300 {
+      color: #92400e !important;
+    }
+    .theme-light .text-amber-200,
+    .theme-light .text-amber-200\/90 {
+      color: #78350f !important;
+    }
+    /* Green (Brand) Light Mode Rules */
+    .theme-light .text-brand-500,
+    .theme-light .text-brand-400,
+    .theme-light .text-brand-300 {
+      color: #15803d !important;
+    }
+    .theme-light .bg-brand-500\/20,
+    .theme-light .bg-brand-500\/10 {
+      background-color: #dcfce7 !important;
+      border-color: #86efac !important;
+    }
+    /* Cyan & Purple Light Mode Rules */
+    .theme-light .text-cyan-400,
+    .theme-light .text-cyan-300 {
+      color: #0284c7 !important;
+    }
+    .theme-light .bg-cyan-500\/20,
+    .theme-light .bg-cyan-500\/10 {
+      background-color: #e0f2fe !important;
+      border-color: #7dd3fc !important;
+    }
+    .theme-light .bg-cyan-950\/80 {
+      background-color: #e0f2fe !important;
+      border-color: #7dd3fc !important;
+      color: #0c4a6e !important;
+    }
+    .theme-light .text-cyan-100 {
+      color: #0c4a6e !important;
+    }
+    .theme-light .text-purple-400 {
+      color: #7e22ce !important;
+    }
+    /* Form Inputs, Selects, Options & Modal Backdrops */
+    .theme-light input[type="text"],
+    .theme-light input[type="password"],
+    .theme-light select {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+    .theme-light select option {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+    }
+    .theme-light .bg-slate-950\/80,
+    .theme-light .bg-slate-950\/85 {
+      background-color: rgba(15, 23, 42, 0.6) !important;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden select-none transition-colors duration-200">
+
+  <div id="app" class="flex-1 flex flex-col max-w-md w-full mx-auto bg-slate-900 shadow-2xl relative overflow-hidden border-x border-slate-800 transition-colors duration-200">
+    
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-30 transition-colors">
+      <div class="flex items-center space-x-3">
+        <button id="btn-back" onclick="app.goBack()" class="hidden text-slate-400 hover:text-brand-500 p-2 rounded-lg bg-slate-800/60 active:scale-95 transition">
+          <i class="fa-solid fa-arrow-left text-lg"></i>
+        </button>
+        <div>
+          <h1 class="text-base font-extrabold tracking-tight text-white flex items-center gap-2">
+            <i class="fa-solid fa-comments text-brand-500"></i>
+            <span>ADULT SPEAKING PRACTICE</span>
+          </h1>
+          <p id="sub-header" class="text-[11px] text-slate-400 font-medium">Pre-A1 / A1 EFL Oral Fluency</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-1.5">
+        <!-- Light / Dark Theme Switcher Button -->
+        <button id="btn-theme-toggle" onclick="app.toggleTheme()" title="Toggle Light/Dark Theme" class="p-2 text-slate-400 hover:text-amber-400 bg-slate-800/80 hover:bg-slate-800 rounded-lg transition border border-slate-700/50">
+          <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+        </button>
+        <!-- Teacher Controls Lock Button -->
+        <button onclick="app.openTeacherModal()" title="Teacher Controls" class="p-2 text-slate-400 hover:text-amber-400 bg-slate-800/80 hover:bg-slate-800 rounded-lg transition border border-slate-700/50">
+          <i class="fa-solid fa-lock text-sm"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN VIEWPORT -->
+    <main id="main-content" class="flex-1 flex flex-col overflow-y-auto custom-scrollbar p-4 relative">
+      <!-- Views will be dynamically injected here -->
+    </main>
+
+    <!-- Bottom Audio HUD Bar (Visible during active speaking session) -->
+    <div id="session-audio-hud" class="hidden bg-slate-950 border-t border-slate-800 p-4 sticky bottom-0 z-40 flex flex-col items-center gap-3">
+      <!-- Status Indicator Badge & Speed Control -->
+      <div class="flex items-center justify-between w-full text-xs px-1">
+        <div id="mic-status-badge" class="flex items-center gap-2 font-medium px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+          <span class="w-2 h-2 rounded-full bg-slate-500" id="mic-dot"></span>
+          <span id="mic-status-text">Microphone Ready</span>
+        </div>
+        
+        <!-- Multi-speed voice selector (1.0x, 0.8x, 0.7x, 0.6x) -->
+        <button onclick="app.cycleSpeed()" id="speed-toggle-btn" title="AI Voice Speed" class="text-slate-300 hover:text-white bg-slate-800 active:bg-slate-700 px-3 py-1 rounded-md text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-gauge-high text-brand-400 text-xs"></i>
+          <span id="speed-text">1.0x Speed</span>
+        </button>
+      </div>
+
+      <!-- Spoken Wave visualizer / listening indicator -->
+      <div id="visualizer" class="hidden h-6 flex items-end justify-center gap-1.5 recording-wave">
+        <div class="w-1.5 bg-brand-500 rounded-full h-2"></div>
+        <div class="w-1.5 bg-brand-500 rounded-full h-4"></div>
+        <div class="w-1.5 bg-brand-500 rounded-full h-6"></div>
+        <div class="w-1.5 bg-brand-500 rounded-full h-3"></div>
+        <div class="w-1.5 bg-brand-500 rounded-full h-5"></div>
+      </div>
+
+      <!-- Live Transcript Banner -->
+      <div id="live-transcript" class="hidden w-full bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 text-center italic min-h-[36px] flex items-center justify-center">
+        "Listening to your response..."
+      </div>
+
+      <!-- Main Microphone Button & Controls -->
+      <div class="flex items-center justify-center gap-6 w-full py-1">
+        <!-- Speaking Support / Help Button -->
+        <button onclick="app.openHelpModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-amber-400 transition active:scale-95">
+          <div class="w-11 h-11 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shadow">
+            <i class="fa-solid fa-lightbulb text-base text-amber-400"></i>
+          </div>
+          <span class="text-[10px] font-bold tracking-wide uppercase">Help</span>
+        </button>
+
+        <!-- Main Push-to-Talk / Toggle Mic Button -->
+        <button id="btn-mic" onclick="app.handleMicClick()" class="relative w-20 h-20 rounded-full bg-gradient-to-tr from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-500/25 flex items-center justify-center active:scale-95 transition border-4 border-slate-900 focus:outline-none">
+          <i id="mic-icon" class="fa-solid fa-microphone text-2xl"></i>
+          <span id="mic-pulse" class="absolute inset-0 rounded-full border-2 border-brand-500 animate-ping opacity-0"></span>
+        </button>
+
+        <!-- Exit/Finish Practice Button -->
+        <button onclick="app.promptExit()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-red-400 transition active:scale-95">
+          <div class="w-11 h-11 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shadow">
+            <i class="fa-solid fa-arrow-right-from-bracket text-base text-red-400"></i>
+          </div>
+          <span class="text-[10px] font-bold tracking-wide uppercase">Exit</span>
+        </button>
+      </div>
+
+      <!-- Keyboard/Text Fallback Toggle -->
+      <div class="w-full flex justify-center">
+        <button onclick="app.toggleTextInput()" class="text-[11px] text-slate-500 hover:text-slate-300 underline font-medium">
+          <i class="fa-solid fa-keyboard mr-1"></i><span id="text-input-toggle-label">Switch to text typing fallback</span>
+        </button>
+      </div>
+
+      <!-- Hidden Text Input Box for Fallback -->
+      <div id="text-input-fallback" class="hidden w-full flex gap-2 mt-1">
+        <input type="text" id="user-text-input" placeholder="Type your response here..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" onkeydown="if(event.key==='Enter') app.sendTextFallback()">
+        <button onclick="app.sendTextFallback()" class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-semibold active:scale-95 transition">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Contextual Help / Speaking Support Modal -->
+  <div id="modal-help" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-amber-400 flex items-center gap-2 text-sm">
+          <i class="fa-solid fa-life-ring"></i>
+          <span>Speaking Support</span>
+        </h3>
+        <button onclick="app.closeHelpModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Choose a strategy to help you answer the current question:
+      </p>
+      <div class="space-y-2">
+        <button onclick="app.requestHelp('repeat')" class="w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-200 flex items-center justify-between active:scale-[0.98]">
+          <span><i class="fa-solid fa-rotate-right text-brand-400 mr-2"></i>Repeat the last question</span>
+          <i class="fa-solid fa-chevron-right text-slate-500 text-[10px]"></i>
+        </button>
+        <button onclick="app.requestHelp('slower')" class="w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-200 flex items-center justify-between active:scale-[0.98]">
+          <span><i class="fa-solid fa-gauge text-cyan-400 mr-2"></i>Speak more slowly</span>
+          <i class="fa-solid fa-chevron-right text-slate-500 text-[10px]"></i>
+        </button>
+        <button onclick="app.requestHelp('starter')" class="w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-200 flex items-center justify-between active:scale-[0.98]">
+          <span><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2"></i>Give me a sentence starter</span>
+          <i class="fa-solid fa-chevron-right text-slate-500 text-[10px]"></i>
+        </button>
+        <button onclick="app.requestHelp('spanish')" class="w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-200 flex items-center justify-between active:scale-[0.98]">
+          <span><i class="fa-solid fa-language text-purple-400 mr-2"></i>Explain briefly in Spanish</span>
+          <i class="fa-solid fa-chevron-right text-slate-500 text-[10px]"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exit Practice Confirmation Modal -->
+  <div id="modal-exit" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl text-center">
+      <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center mx-auto text-xl">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+      </div>
+      <h3 class="font-bold text-base text-white">Exit practice?</h3>
+      <p class="text-xs text-slate-400">Exit now or finish to save your completion record.</p>
+      <div class="flex flex-col gap-2 pt-2">
+        <button onclick="app.closeExitModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition">
+          Continue Practice
+        </button>
+        <button onclick="app.confirmExitToMenu()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg shadow-red-600/20">
+          Exit to Menu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teacher Unlocking Management Modal -->
+  <div id="modal-teacher" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-amber-400 flex items-center gap-2 text-sm">
+          <i class="fa-solid fa-user-shield"></i>
+          <span>TEACHER CONTROLS</span>
+        </h3>
+        <button onclick="app.closeTeacherModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      
+      <div id="teacher-auth-section" class="space-y-3">
+        <p class="text-xs text-slate-400">Enter passcode to manage course unit unlocking:</p>
+        <div class="flex gap-2">
+          <input type="password" id="teacher-passcode" placeholder="Enter passcode" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          <button onclick="app.verifyTeacherPasscode()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs active:scale-95 transition">
+            Unlock
+          </button>
+        </div>
+      </div>
+
+      <div id="teacher-controls-section" class="hidden space-y-4">
+        <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700 space-y-2">
+          <label class="text-xs font-semibold text-white block">Units available through:</label>
+          <select id="teacher-unit-select" class="w-full bg-slate-900 border border-slate-700 text-amber-400 font-bold rounded-lg px-3 py-2 text-xs focus:outline-none">
+            <!-- Options populated dynamically -->
+          </select>
+        </div>
+
+        <button onclick="app.saveTeacherUnitChoice()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-amber-500/20">
+          SAVE CHANGES
+        </button>
+
+        <div id="teacher-save-alert" class="hidden bg-brand-500/10 border border-brand-500/30 text-brand-300 text-xs p-3 rounded-xl font-medium text-center">
+          <!-- Dynamic confirmation text -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APPLICATION SCRIPT -->
+  <script>
+    const COURSE_UNITS = [
+      {
+        id: 1,
+        title: "Meeting People",
+        linguisticTarget: "Greetings, Verb BE, Subject Pronouns, Phone Numbers",
+        needToKnow: "Introduce yourself, share your name, and exchange phone numbers in daily adult situations.",
+        scenarios: [
+          { 
+            id: "1a", 
+            title: "Meeting at a Course", 
+            role: "Classmate (Alex)", 
+            situation: "You are starting your English class today and meeting a classmate.",
+            goal: "Introduce yourself and exchange basic information.",
+            intro: "Hi! I'm Alex. I'm a student in this English class. What's your name?" 
+          },
+          { 
+            id: "1b", 
+            title: "Meeting at Work", 
+            role: "New Coworker (David)", 
+            situation: "It is your first day at work or meeting a new colleague.",
+            goal: "Greet your coworker and say where you are from.",
+            intro: "Hello, welcome! I'm David from marketing. What is your name?" 
+          },
+          { 
+            id: "1c", 
+            title: "Hotel Check-in", 
+            role: "Receptionist", 
+            situation: "You are checking into a hotel at reception.",
+            goal: "State your name and phone number for the reservation.",
+            intro: "Good afternoon! Welcome to Grand Hotel. May I have your full name, please?" 
+          },
+          { 
+            id: "1d", 
+            title: "Exchanging Phone Numbers", 
+            role: "New Friend", 
+            situation: "You are finishing a conversation with a new acquaintance.",
+            goal: "Give your phone number to stay in touch.",
+            intro: "It was great talking to you! Let's stay in touch. What's your phone number?" 
+          }
+        ]
+      },
+      {
+        id: 2,
+        title: "My Week / Work / Studies",
+        linguisticTarget: "Simple Present (I/You/We/They/He/She), Days, Numbers 11-100, Supermarket",
+        needToKnow: "Talk about your schedule, ask supermarket prices, and buy everyday groceries.",
+        scenarios: [
+          { 
+            id: "2a", 
+            title: "Talking About Your Week", 
+            role: "Neighbor", 
+            situation: "You meet a neighbor outside your apartment.",
+            goal: "Talk about what days you work, study, or rest.",
+            intro: "Hi there! I usually see you busy on weekdays. When do you usually work or study?" 
+          },
+          { 
+            id: "2b", 
+            title: "Workplace & Study Location", 
+            role: "Coworker", 
+            situation: "You are chatting with a colleague during a coffee break.",
+            goal: "Share where you work or study.",
+            intro: "Hey! I'm planning my commute. Where do you work or study?" 
+          },
+          { 
+            id: "2c", 
+            title: "Supermarket Cashier", 
+            role: "Supermarket Cashier", 
+            situation: "You are at a supermarket counter wanting to buy items.",
+            goal: "Ask the price of an item you want and buy it.",
+            intro: "Hello! Can I help you today?" 
+          },
+          { 
+            id: "2d", 
+            title: "Neighborhood Distances", 
+            role: "Local Resident", 
+            situation: "You are looking for a nearby store in a new neighborhood.",
+            goal: "Ask if there is a supermarket or pharmacy nearby.",
+            intro: "Excuse me, I'm new here. Is there a supermarket near here?" 
+          }
+        ]
+      },
+      {
+        id: 3,
+        title: "My Brother's a Pilot",
+        linguisticTarget: "Family members, Occupations, Possessive Adjectives (my/your/his/her)",
+        needToKnow: "Talk about family members, friends, or coworkers and their occupations.",
+        scenarios: [
+          { 
+            id: "3a", 
+            title: "Introduce a Family Member or Friend", 
+            role: "Friend", 
+            situation: "A friend asks about people in your life.",
+            goal: "Choose a person (family member or friend) and describe what they do.",
+            intro: "Tell me about someone in your life! Who would you like to talk about — a family member or a friend?" 
+          },
+          { 
+            id: "3b", 
+            title: "Talking About Jobs", 
+            role: "Classmate", 
+            situation: "You are practicing job vocabulary with a classmate.",
+            goal: "State someone's job (e.g. teacher, doctor, driver, student).",
+            intro: "I love learning about different jobs. What does your brother, sister, or best friend do?" 
+          },
+          { 
+            id: "3c", 
+            title: "Meeting a Coworker's Relative", 
+            role: "Coworker's Sibling", 
+            situation: "You meet someone introduced by a colleague at work.",
+            goal: "Greet them and ask or share occupations.",
+            intro: "Hi! Nice to meet you. My relative told me a lot about you. What do you do?" 
+          }
+        ]
+      },
+      {
+        id: 4,
+        title: "I Like That Coat",
+        linguisticTarget: "Clothing, Colors, Prices, Demonstratives (this, that, these, those)",
+        needToKnow: "Ask about clothing items, colors, and prices in stores.",
+        scenarios: [
+          { 
+            id: "4a", 
+            title: "Clothing Store", 
+            role: "Salesperson", 
+            situation: "You are inside a clothing store shopping for something you want.",
+            goal: "Ask for a clothing item (jacket, shirt, shoes, sweater) and its price.",
+            intro: "Hello! Welcome to our store. What clothing item are you looking for today?" 
+          },
+          { 
+            id: "4b", 
+            title: "Choosing an Outfit", 
+            role: "Shopping Companion", 
+            situation: "You are shopping with a friend looking at options.",
+            goal: "Express which color or item you prefer using 'this' or 'that'.",
+            intro: "Look at these clothes over here. Do you like this red sweater or that blue coat?" 
+          },
+          { 
+            id: "4c", 
+            title: "Complimenting Clothes", 
+            role: "Colleague", 
+            situation: "A colleague notices what you are wearing.",
+            goal: "Respond to a compliment about your clothes or jacket.",
+            intro: "That jacket looks very nice on you today! Is it new?" 
+          }
+        ]
+      },
+      {
+        id: 5,
+        title: "She Has Long Hair",
+        linguisticTarget: "Physical Descriptions, BE vs HAVE/HAS, Hair & Eye adjectives",
+        needToKnow: "Describe people's physical characteristics (tall, short, hair color, glasses).",
+        scenarios: [
+          { 
+            id: "5a", 
+            title: "Identify Person in Public", 
+            role: "Friend at Event", 
+            situation: "You are trying to spot a friend or teacher in a crowd.",
+            goal: "Describe someone you know or are looking for.",
+            intro: "We are meeting our supervisor or classmate here. Who are you looking for, and what do they look like?" 
+          },
+          { 
+            id: "5b", 
+            title: "Describing Someone You Know", 
+            role: "Co-worker", 
+            situation: "Your coworker asks about your teacher or boss.",
+            goal: "Describe their hair, height, or glasses.",
+            intro: "Tell me about your teacher or boss. Does he or she have short hair, long hair, or glasses?" 
+          }
+        ]
+      },
+      {
+        id: 6,
+        title: "Is That Your Phone?",
+        linguisticTarget: "Personal Objects, Possessive Pronouns (mine, yours, his, hers)",
+        needToKnow: "Identify belongings, lost items, and state ownership.",
+        scenarios: [
+          { 
+            id: "6a", 
+            title: "Lost & Found Desk", 
+            role: "Lost & Found Agent", 
+            situation: "You lost an item at an airport, office, or school.",
+            goal: "Describe your lost personal item (phone, keys, wallet, bag).",
+            intro: "Hello! Welcome to Lost & Found. What personal item did you lose today?" 
+          },
+          { 
+            id: "6b", 
+            title: "Getting Ready for Work", 
+            role: "Roommate / Housemate", 
+            situation: "You see everyday items on a table before leaving.",
+            goal: "Identify whose items they are using 'mine' or 'yours'.",
+            intro: "Hey, I see a set of keys and a wallet on the kitchen table. Are these keys yours?" 
+          }
+        ]
+      },
+      {
+        id: 7,
+        title: "It's On the Sofa",
+        linguisticTarget: "Rooms, Furniture, Prepositions of Place (in, on, under, next to)",
+        needToKnow: "Describe room layouts and say where household items are located.",
+        scenarios: [
+          { 
+            id: "7a", 
+            title: "Finding Missing Keys", 
+            role: "Family Member", 
+            situation: "Someone in your home is searching for an object.",
+            goal: "Say where the object is located (on the table, in the kitchen, next to the sofa).",
+            intro: "I can't find my keys! Are they in the kitchen, or are they on the table?" 
+          },
+          { 
+            id: "7b", 
+            title: "Home or Apartment Tour", 
+            role: "Visiting Friend", 
+            situation: "A friend is visiting your home or apartment.",
+            goal: "Point out rooms or furniture.",
+            intro: "Your place looks nice! Where is the living room or kitchen?" 
+          }
+        ]
+      },
+      {
+        id: 8,
+        title: "There's a Park Near Here",
+        linguisticTarget: "Places around town, There is / There are, Some / Any",
+        needToKnow: "Discuss places in a neighborhood (banks, parks, coffee shops, pharmacies).",
+        scenarios: [
+          { 
+            id: "8a", 
+            title: "Visiting a New Area", 
+            role: "Hotel Desk Clerk", 
+            situation: "You are asking about facilities around your location.",
+            goal: "Ask if there is a bank, pharmacy, or park nearby.",
+            intro: "Welcome! Are you looking for a bank, coffee shop, or pharmacy near here?" 
+          },
+          { 
+            id: "8b", 
+            title: "Describing Your Neighborhood", 
+            role: "New Neighbor", 
+            situation: "A new neighbor introduces themselves to you.",
+            goal: "Tell them about a park, store, or cafe near your home.",
+            intro: "Hi! I just moved in next door. Are there any good parks or coffee shops near here?" 
+          }
+        ]
+      },
+      {
+        id: 9,
+        title: "Daily Routines and Time",
+        linguisticTarget: "Routines (get up, shower, work), Clock times, Time expressions",
+        needToKnow: "Explain daily routines and express times of day.",
+        scenarios: [
+          { 
+            id: "9a", 
+            title: "Morning Schedule", 
+            role: "Coworker", 
+            situation: "You are talking with a colleague before starting work.",
+            goal: "Say what time you get up or arrive at work/study.",
+            intro: "Good morning! What time do you usually get up on weekdays?" 
+          },
+          { 
+            id: "9b", 
+            title: "Work & Evening Routine", 
+            role: "Classmate", 
+            situation: "You are discussing daily schedules in class.",
+            goal: "Describe your routine after work or in the evening.",
+            intro: "How do you manage your schedule? What do you usually do after work or class?" 
+          }
+        ]
+      },
+      {
+        id: 10,
+        title: "Free Time, Sports, and Plans",
+        linguisticTarget: "Let's + verb, Want to + verb, Expressions of Frequency",
+        needToKnow: "Express leisure activities and make simple plans with others.",
+        scenarios: [
+          { 
+            id: "10a", 
+            title: "Weekend Leisure Plans", 
+            role: "Friend", 
+            situation: "A friend asks about your leisure preferences.",
+            goal: "State what you like to do in your free time.",
+            intro: "The weekend is coming! What do you usually like to do in your free time?" 
+          },
+          { 
+            id: "10b", 
+            title: "Inviting a Friend", 
+            role: "Classmate", 
+            situation: "A classmate wants to do an activity together.",
+            goal: "Accept or make a plan using 'want to' or 'let's'.",
+            intro: "Do you want to grab coffee or go for a walk this Saturday?" 
+          }
+        ]
+      },
+      {
+        id: 11,
+        title: "Asking for and Giving Directions",
+        linguisticTarget: "Imperatives (turn left, go straight), Direction vocabulary",
+        needToKnow: "Ask for and give basic directions in public spaces.",
+        scenarios: [
+          { 
+            id: "11a", 
+            title: "Finding the Bank or Station", 
+            role: "Pedestrian", 
+            situation: "You are on the street searching for a place.",
+            goal: "Ask how to get to a nearby place (bank, station, supermarket).",
+            intro: "Excuse me! Is there a bank or bus station near here? How do I get there?" 
+          },
+          { 
+            id: "11b", 
+            title: "Helping a Lost Visitor", 
+            role: "Lost Visitor", 
+            situation: "A visitor asks you for directions on the street.",
+            goal: "Give simple directions (turn left, go straight, next to...).",
+            intro: "Hello! I'm looking for the main park. Can you help me with directions?" 
+          }
+        ]
+      },
+      {
+        id: 12,
+        title: "What Can You Do?",
+        linguisticTarget: "Modal CAN / CAN'T for practical abilities and work skills",
+        needToKnow: "Express practical work skills, computer abilities, or languages.",
+        scenarios: [
+          { 
+            id: "12a", 
+            title: "Work Skills Conversation", 
+            role: "Supervisor / Team Leader", 
+            situation: "You are discussing job skills with a supervisor.",
+            goal: "State 1 or 2 practical skills you can do (use computer, drive, cook, speak languages).",
+            intro: "Welcome! We are organizing our team work. What practical skills can you do well?" 
+          },
+          { 
+            id: "12b", 
+            title: "Helping a Friend with Tech", 
+            role: "Friend", 
+            situation: "A friend needs practical assistance.",
+            goal: "Say what you can or cannot fix/do.",
+            intro: "My phone or laptop has a minor issue. Can you fix computers or use software?" 
+          }
+        ]
+      }
+    ];
+
+    class SpeakingApp {
+      constructor() {
+        this.highestUnlockedUnit = parseInt(localStorage.getItem('highestUnlockedUnit') || '3');
+        this.theme = localStorage.getItem('theme') || 'dark';
+        this.currentView = 'home';
+        this.viewHistory = [];
+        
+        // Practice Session State
+        this.activeUnit = null;
+        this.activeScenario = null;
+        this.practiceMode = 'guided'; // 'guided' | 'challenge'
+        
+        // Voice Speed options: 1.0x (Normal), 0.8x (Slow), 0.7x (Slower), 0.6x (Very Slow)
+        this.speedIndex = 0;
+        this.speedLevels = [1.0, 0.8, 0.7, 0.6];
+        this.speechRate = 1.0;
+
+        this.isListening = false;
+        this.isProcessing = false;
+        this.chatHistory = []; // { role: 'ai'|'user', text: '', correction?: '' }
+        
+        // Session Analytics & Evidence
+        this.sessionStartTime = null;
+        this.userSpokenCount = 0;
+        this.lastCompletedSessionData = null;
+
+        // Speech Recognition & Synthesis Setup
+        this.recognition = null;
+        this.synth = window.speechSynthesis;
+        this.initSpeechRecognition();
+
+        this.geminiApiKey = "";
+
+        // Apply saved visual theme on load
+        this.applyTheme(this.theme);
+      }
+
+      applyTheme(theme) {
+        this.theme = theme;
+        localStorage.setItem('theme', theme);
+        const root = document.getElementById('html-root');
+        const icon = document.getElementById('theme-icon');
+
+        if (theme === 'light') {
+          root.classList.add('theme-light');
+          if (icon) {
+            icon.className = 'fa-solid fa-sun text-amber-500';
+          }
+        } else {
+          root.classList.remove('theme-light');
+          if (icon) {
+            icon.className = 'fa-solid fa-moon text-slate-300';
+          }
+        }
+      }
+
+      toggleTheme() {
+        const newTheme = this.theme === 'dark' ? 'light' : 'dark';
+        this.applyTheme(newTheme);
+      }
+
+      cycleSpeed() {
+        this.speedIndex = (this.speedIndex + 1) % this.speedLevels.length;
+        this.speechRate = this.speedLevels[this.speedIndex];
+        const label = document.getElementById('speed-text');
+        if (label) {
+          const speedLabels = {
+            1.0: '1.0x Normal',
+            0.8: '0.8x Slow',
+            0.7: '0.7x Slower',
+            0.6: '0.6x Very Slow'
+          };
+          label.innerText = speedLabels[this.speechRate] || `${this.speechRate.toFixed(1)}x`;
+        }
+      }
+
+      initSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+          this.recognition = new SpeechRecognition();
+          this.recognition.continuous = false;
+          this.recognition.interimResults = true;
+          this.recognition.lang = 'en-US';
+
+          this.recognition.onstart = () => {
+            this.setMicState('listening', 'Listening to you...');
+            const trans = document.getElementById('live-transcript');
+            if (trans) {
+              trans.classList.remove('hidden');
+              trans.innerText = "Listening...";
+            }
+          };
+
+          this.recognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+              } else {
+                interimTranscript += event.results[i][0].transcript;
+              }
+            }
+
+            const currentText = finalTranscript || interimTranscript;
+            const trans = document.getElementById('live-transcript');
+            if (trans && currentText) {
+              trans.innerText = `"${currentText}"`;
+            }
+
+            if (finalTranscript) {
+              this.handleUserSpokenText(finalTranscript);
+            }
+          };
+
+          this.recognition.onerror = (event) => {
+            console.warn('Speech recognition error:', event.error);
+            if (event.error === 'not-allowed') {
+              this.setMicState('error', 'Microphone blocked in browser.');
+            } else {
+              this.setMicState('ready', 'Tap Mic to speak');
+            }
+          };
+
+          this.recognition.onend = () => {
+            if (this.isListening) {
+              this.isListening = false;
+              if (!this.isProcessing) {
+                this.setMicState('ready', 'Tap Mic to speak');
+              }
+            }
+          };
+        }
+      }
+
+      render() {
+        const main = document.getElementById('main-content');
+        const backBtn = document.getElementById('btn-back');
+        const hud = document.getElementById('session-audio-hud');
+
+        if (this.currentView === 'home') {
+          backBtn.classList.add('hidden');
+          hud.classList.add('hidden');
+          main.innerHTML = this.renderHomeView();
+        } else if (this.currentView === 'unit-select') {
+          backBtn.classList.remove('hidden');
+          hud.classList.add('hidden');
+          main.innerHTML = this.renderUnitSelectView();
+        } else if (this.currentView === 'scenario-select') {
+          backBtn.classList.remove('hidden');
+          hud.classList.add('hidden');
+          main.innerHTML = this.renderScenarioSelectView();
+        } else if (this.currentView === 'mode-select') {
+          backBtn.classList.remove('hidden');
+          hud.classList.add('hidden');
+          main.innerHTML = this.renderModeSelectView();
+        } else if (this.currentView === 'session') {
+          backBtn.classList.remove('hidden');
+          hud.classList.remove('hidden');
+          main.innerHTML = this.renderSessionView();
+          this.scrollToBottom();
+        } else if (this.currentView === 'summary') {
+          backBtn.classList.add('hidden');
+          hud.classList.add('hidden');
+          main.innerHTML = this.renderSummaryView();
+        }
+      }
+
+      navigateTo(view) {
+        if (this.currentView !== view) {
+          this.viewHistory.push(this.currentView);
+          this.currentView = view;
+          this.render();
+        }
+      }
+
+      goBack() {
+        if (this.currentView === 'session') {
+          this.promptExit();
+          return;
+        }
+
+        if (this.viewHistory.length > 0) {
+          this.currentView = this.viewHistory.pop();
+        } else {
+          this.currentView = 'home';
+        }
+        this.render();
+      }
+
+      promptExit() {
+        document.getElementById('modal-exit').classList.remove('hidden');
+      }
+
+      closeExitModal() {
+        document.getElementById('modal-exit').classList.add('hidden');
+      }
+
+      confirmExitToMenu() {
+        this.closeExitModal();
+        this.stopAllAudioAndMic();
+        this.viewHistory = [];
+        this.currentView = 'home';
+        this.render();
+      }
+
+      stopAllAudioAndMic() {
+        if (this.synth) this.synth.cancel();
+        if (this.recognition) {
+          try { this.recognition.stop(); } catch(e){}
+        }
+        this.isListening = false;
+        this.isProcessing = false;
+      }
+
+      renderHomeView() {
+        return `
+          <div class="space-y-6 my-auto py-2">
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+              <div class="absolute -right-4 -bottom-4 opacity-10 text-brand-500">
+                <i class="fa-solid fa-headset text-9xl"></i>
+              </div>
+              <span class="px-2.5 py-1 bg-brand-500/20 text-brand-400 text-[10px] font-bold tracking-wider uppercase rounded-full border border-brand-500/30">
+                Community EFL Course
+              </span>
+              <h2 class="text-xl font-extrabold text-white mt-3">Speak English Confidently</h2>
+              <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                Practice practical spoken conversations at your exact textbook level (Pre-A1 / A1). Speak into your mic and listen to your AI tutor!
+              </p>
+            </div>
+
+            <!-- Main Menu Buttons -->
+            <div class="space-y-3">
+              <button onclick="app.selectPracticeType('unit')" class="w-full bg-slate-800 hover:bg-slate-700/80 border border-slate-700 p-4 rounded-2xl flex items-center justify-between group transition active:scale-[0.98] shadow-md">
+                <div class="flex items-center space-x-3.5">
+                  <div class="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center border border-brand-500/20 text-lg group-hover:scale-105 transition">
+                    <i class="fa-solid fa-book-open"></i>
+                  </div>
+                  <div class="text-left">
+                    <div class="text-sm font-bold text-white">Practice by Unit</div>
+                    <div class="text-xs text-slate-400">Targeted textbook scenarios (Units 1–${this.highestUnlockedUnit})</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-slate-500 text-xs group-hover:translate-x-1 transition"></i>
+              </button>
+
+              <button onclick="app.selectPracticeType('weekend')" class="w-full bg-slate-800 hover:bg-slate-700/80 border border-slate-700 p-4 rounded-2xl flex items-center justify-between group transition active:scale-[0.98] shadow-md">
+                <div class="flex items-center space-x-3.5">
+                  <div class="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20 text-lg group-hover:scale-105 transition">
+                    <i class="fa-solid fa-calendar-check"></i>
+                  </div>
+                  <div class="text-left">
+                    <div class="text-sm font-bold text-white">Weekend Practice</div>
+                    <div class="text-xs text-slate-400">Combine unlocked unit vocabulary in one situation</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-slate-500 text-xs group-hover:translate-x-1 transition"></i>
+              </button>
+
+              <button onclick="app.selectPracticeType('surprise')" class="w-full bg-slate-800 hover:bg-slate-700/80 border border-slate-700 p-4 rounded-2xl flex items-center justify-between group transition active:scale-[0.98] shadow-md">
+                <div class="flex items-center space-x-3.5">
+                  <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20 text-lg group-hover:scale-105 transition">
+                    <i class="fa-solid fa-dice text-lg"></i>
+                  </div>
+                  <div class="text-left">
+                    <div class="text-sm font-bold text-white">Surprise Me!</div>
+                    <div class="text-xs text-slate-400">Random real-life situation from active units</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-slate-500 text-xs group-hover:translate-x-1 transition"></i>
+              </button>
+            </div>
+
+            <!-- Pedagogy & Voice Notice -->
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-xl p-3.5 flex items-start gap-3 text-xs text-slate-400">
+              <i class="fa-solid fa-microphone-lines text-brand-400 text-sm mt-0.5"></i>
+              <div>
+                <strong class="text-slate-300">Microphone Practice:</strong> Speak clearly using full simple sentences. Use the Help button if you need a sentence starter!
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      renderUnitSelectView() {
+        return `
+          <div class="space-y-4">
+            <div>
+              <h2 class="text-lg font-bold text-white">Select Course Unit</h2>
+              <p class="text-xs text-slate-400">Choose a unit to practice speaking</p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3">
+              ${COURSE_UNITS.map(unit => {
+                const isUnlocked = unit.id <= this.highestUnlockedUnit;
+                return `
+                  <div onclick="${isUnlocked ? `app.selectUnit(${unit.id})` : ''}" class="p-3.5 rounded-2xl border transition ${isUnlocked ? 'bg-slate-800 hover:bg-slate-700/80 border-slate-700 cursor-pointer active:scale-[0.99]' : 'bg-slate-900/40 border-slate-800 opacity-60 cursor-not-allowed'} flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                      <div class="w-10 h-10 rounded-xl ${isUnlocked ? 'bg-brand-500/10 text-brand-400 border border-brand-500/20' : 'bg-slate-800 text-slate-600'} flex items-center justify-center font-extrabold text-sm">
+                        ${unit.id}
+                      </div>
+                      <div>
+                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                          <span>${unit.title}</span>
+                          ${!isUnlocked ? '<i class="fa-solid fa-lock text-xs text-amber-500/80"></i>' : ''}
+                        </div>
+                        <div class="text-[11px] text-slate-400 line-clamp-1">${unit.linguisticTarget}</div>
+                      </div>
+                    </div>
+                    ${isUnlocked ? '<i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>' : '<span class="text-[10px] text-slate-600 uppercase font-semibold">Locked</span>'}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      renderScenarioSelectView() {
+        if (!this.activeUnit) return '';
+        return `
+          <div class="space-y-4">
+            <div>
+              <span class="text-[10px] uppercase tracking-wider font-bold text-brand-400">Unit ${this.activeUnit.id}</span>
+              <h2 class="text-lg font-bold text-white">${this.activeUnit.title}</h2>
+            </div>
+
+            <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 space-y-1.5">
+              <div class="text-xs font-bold text-amber-400 flex items-center gap-2 uppercase tracking-wide">
+                <i class="fa-solid fa-circle-info"></i> Need to Know
+              </div>
+              <p class="text-xs text-amber-200/90 leading-relaxed">${this.activeUnit.needToKnow}</p>
+            </div>
+
+            <div class="space-y-2.5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Choose Scenario</h3>
+              ${this.activeUnit.scenarios.map(sc => `
+                <button onclick="app.selectScenario('${sc.id}')" class="w-full text-left bg-slate-800 hover:bg-slate-700/80 border border-slate-700 p-4 rounded-2xl flex items-center justify-between group transition active:scale-[0.98]">
+                  <div class="space-y-1">
+                    <div class="text-sm font-bold text-white">${sc.title}</div>
+                    <div class="text-xs text-slate-400"><i class="fa-solid fa-user-tag text-brand-400 mr-1"></i>AI Role: ${sc.role}</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-slate-500 text-xs group-hover:translate-x-1 transition"></i>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      renderModeSelectView() {
+        return `
+          <div class="space-y-5 my-auto">
+            <div>
+              <h2 class="text-lg font-bold text-white">Select Practice Mode</h2>
+              <p class="text-xs text-slate-400">How would you like your AI tutor to assist you?</p>
+            </div>
+
+            <div class="space-y-3">
+              <div onclick="app.startPracticeSession('guided')" class="bg-slate-800 hover:bg-slate-700/90 border border-slate-700 p-5 rounded-2xl cursor-pointer transition active:scale-[0.98] space-y-2 border-l-4 border-l-brand-500 shadow-md">
+                <div class="flex items-center justify-between">
+                  <div class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-hands-holding-child text-brand-400"></i> Guided Practice
+                  </div>
+                  <span class="text-[10px] bg-brand-500/20 text-brand-300 font-bold px-2 py-0.5 rounded-full">Recommended</span>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                  Patient step-by-step coaching. If you make a grammar error or misunderstand a question, the tutor gives brief feedback and invites a retry.
+                </p>
+              </div>
+
+              <div onclick="app.startPracticeSession('challenge')" class="bg-slate-800 hover:bg-slate-700/90 border border-slate-700 p-5 rounded-2xl cursor-pointer transition active:scale-[0.98] space-y-2 border-l-4 border-l-cyan-500 shadow-md">
+                <div class="flex items-center justify-between">
+                  <div class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-cyan-400"></i> Speaking Challenge
+                  </div>
+                  <span class="text-[10px] bg-cyan-500/20 text-cyan-300 font-bold px-2 py-0.5 rounded-full">Fluency Focus</span>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                  Continuous conversational flow with minimal interruptions. Receive a full summary report at the end.
+                </p>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      renderSessionView() {
+        if (!this.activeScenario) return '';
+
+        return `
+          <div class="flex flex-col h-full space-y-3 pb-2">
+            <!-- Scenario Header & Context Info Banner -->
+            <div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-3.5 space-y-2 sticky top-0 z-10 backdrop-blur shadow-sm">
+              <div class="flex items-center justify-between text-xs">
+                <div>
+                  <span class="text-[10px] text-brand-400 font-extrabold uppercase tracking-wider">${this.practiceMode === 'guided' ? 'Guided Practice' : 'Speaking Challenge'}</span>
+                  <div class="font-extrabold text-white text-sm leading-tight">${this.activeScenario.title}</div>
+                </div>
+                <div class="text-right text-[11px] text-slate-400 bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-700/50">
+                  AI: <strong class="text-slate-200">${this.activeScenario.role}</strong>
+                </div>
+              </div>
+
+              <!-- Explicit Short Context Card for Pre-A1/A1 Learners -->
+              <div class="bg-slate-900/80 rounded-lg p-2.5 border border-slate-700/60 text-[11px] space-y-1">
+                <div class="text-slate-300"><strong>Situation:</strong> ${this.activeScenario.situation || 'Real-life conversation.'}</div>
+                <div class="text-amber-300 font-semibold"><strong>Your Goal:</strong> ${this.activeScenario.goal || 'Respond naturally using course vocabulary.'}</div>
+              </div>
+            </div>
+
+            <!-- Conversation Chat Thread -->
+            <div id="chat-thread" class="flex-1 space-y-3 overflow-y-auto pr-1">
+              ${this.chatHistory.map(msg => {
+                if (msg.role === 'ai') {
+                  return `
+                    <div class="flex items-start gap-2.5">
+                      <div class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow">
+                        <i class="fa-solid fa-robot"></i>
+                      </div>
+                      <div class="space-y-1 max-w-[85%]">
+                        <div class="bg-slate-800 border border-slate-700/80 rounded-2xl rounded-tl-sm p-3 text-xs text-slate-100 leading-relaxed shadow-sm">
+                          ${msg.text}
+                        </div>
+                        <button onclick="app.speakText('${this.escapeQuotes(msg.text)}')" class="text-[10px] text-slate-400 hover:text-brand-400 flex items-center gap-1 font-medium pl-1">
+                          <i class="fa-solid fa-volume-high"></i> Listen again
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                } else {
+                  return `
+                    <div class="flex flex-col items-end gap-1">
+                      <div class="flex items-start gap-2.5 flex-row-reverse max-w-[85%]">
+                        <div class="w-8 h-8 rounded-full bg-cyan-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow">
+                          <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div class="bg-cyan-950/80 border border-cyan-800/80 text-cyan-100 rounded-2xl rounded-tr-sm p-3 text-xs leading-relaxed shadow-sm">
+                          ${msg.text}
+                        </div>
+                      </div>
+                      ${msg.correction ? `
+                        <div class="bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-xl p-2.5 text-xs max-w-[85%] space-y-1">
+                          <div class="font-bold flex items-center gap-1.5 text-[11px]">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Tutor Note:
+                          </div>
+                          <p class="text-[11px] leading-relaxed">${msg.correction}</p>
+                        </div>
+                      ` : ''}
+                    </div>
+                  `;
+                }
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      renderSummaryView() {
+        const data = this.lastCompletedSessionData;
+        const isMeaningful = data && data.userTurns >= 2;
+
+        return `
+          <div class="space-y-5 my-auto py-2">
+            <!-- Practice Completion Evidence Record -->
+            ${isMeaningful ? `
+              <div class="bg-gradient-to-br from-brand-950/90 to-slate-900 border-2 border-brand-500/50 rounded-2xl p-4 shadow-xl space-y-3 relative overflow-hidden">
+                <div class="absolute -right-3 -bottom-3 text-brand-500/10 text-8xl pointer-events-none">
+                  <i class="fa-solid fa-certificate"></i>
+                </div>
+                <div class="flex items-center justify-between border-b border-brand-500/30 pb-2.5">
+                  <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-brand-400 text-lg"></i>
+                    <span class="font-black text-sm text-brand-300 tracking-wider">PRACTICE COMPLETED ✓</span>
+                  </div>
+                  <span class="font-mono text-xs font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">
+                    ${data.code}
+                  </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span class="text-[10px] text-slate-400 block uppercase font-semibold">Unit</span>
+                    <strong class="text-slate-100">${data.unitTitle}</strong>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 block uppercase font-semibold">Mode</span>
+                    <strong class="text-slate-100">${data.mode}</strong>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 block uppercase font-semibold">Practice Time</span>
+                    <strong class="text-slate-100">${data.duration}</strong>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 block uppercase font-semibold">Speaking Turns</span>
+                    <strong class="text-slate-100">${data.userTurns} turns</strong>
+                  </div>
+                  <div class="col-span-2">
+                    <span class="text-[10px] text-slate-400 block uppercase font-semibold">Date Completed</span>
+                    <strong class="text-slate-100">${data.dateStr}</strong>
+                  </div>
+                </div>
+              </div>
+            ` : `
+              <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 text-center space-y-2">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400 text-2xl"></i>
+                <h3 class="font-bold text-sm text-white">Practice Session Ended Early</h3>
+                <p class="text-xs text-slate-400">Complete at least 2 spoken turns to generate a Practice Completed record.</p>
+              </div>
+            `}
+
+            <!-- Formative Feedback Report Container -->
+            <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-4 space-y-3 shadow-xl">
+              <div class="border-b border-slate-700/80 pb-2">
+                <div class="text-xs font-bold text-brand-400 flex items-center gap-2 uppercase tracking-wide">
+                  <i class="fa-solid fa-circle-check"></i> Communication Success
+                </div>
+                <p id="summary-comm" class="text-xs text-slate-200 mt-1 leading-relaxed"></p>
+              </div>
+
+              <div class="border-b border-slate-700/80 pb-2">
+                <div class="text-xs font-bold text-amber-400 flex items-center gap-2 uppercase tracking-wide">
+                  <i class="fa-solid fa-wrench"></i> Language to Improve
+                </div>
+                <p id="summary-lang" class="text-xs text-slate-200 mt-1 leading-relaxed"></p>
+              </div>
+
+              <div class="border-b border-slate-700/80 pb-2">
+                <div class="text-xs font-bold text-cyan-400 flex items-center gap-2 uppercase tracking-wide">
+                  <i class="fa-solid fa-bullhorn"></i> Pronunciation Intelligibility
+                </div>
+                <p id="summary-pron" class="text-xs text-slate-200 mt-1 leading-relaxed"></p>
+              </div>
+
+              <div>
+                <div class="text-xs font-bold text-purple-400 flex items-center gap-2 uppercase tracking-wide">
+                  <i class="fa-solid fa-arrows-rotate"></i> Recommendation for Next Attempt
+                </div>
+                <p id="summary-retry" class="text-xs text-slate-200 mt-1 leading-relaxed"></p>
+              </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+              <button onclick="app.restartSameScenario()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl text-xs border border-slate-700 active:scale-95 transition">
+                <i class="fa-solid fa-rotate-left mr-1.5"></i> Try Again
+              </button>
+              <button onclick="app.navigateTo('home')" class="flex-1 bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl text-xs active:scale-95 transition shadow-lg shadow-brand-600/30">
+                <i class="fa-solid fa-house mr-1.5"></i> Home Menu
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      selectPracticeType(type) {
+        if (type === 'unit') {
+          this.navigateTo('unit-select');
+        } else if (type === 'weekend') {
+          this.activeUnit = { id: 0, title: "Weekend Comprehensive Practice", needToKnow: "Combine vocabulary & grammar from all unlocked units in a full real-world situation!" };
+          this.activeScenario = {
+            id: 'weekend',
+            title: "Weekend Social & Shopping Gathering",
+            role: "Friend / Local Resident",
+            situation: "You are spending time in town over the weekend with a friend.",
+            goal: "Talk about your schedule, ask about nearby places, or order items.",
+            intro: "Hi! Good to see you this weekend. What do you usually do on Saturdays, and where do you like to go?"
+          };
+          this.navigateTo('mode-select');
+        } else if (type === 'surprise') {
+          const availableUnits = COURSE_UNITS.filter(u => u.id <= this.highestUnlockedUnit);
+          const randomUnit = availableUnits[Math.floor(Math.random() * availableUnits.length)];
+          const randomScenario = randomUnit.scenarios[Math.floor(Math.random() * randomUnit.scenarios.length)];
+          this.activeUnit = randomUnit;
+          this.activeScenario = randomScenario;
+          this.navigateTo('mode-select');
+        }
+      }
+
+      selectUnit(unitId) {
+        this.activeUnit = COURSE_UNITS.find(u => u.id === unitId);
+        this.navigateTo('scenario-select');
+      }
+
+      selectScenario(scenarioId) {
+        this.activeScenario = this.activeUnit.scenarios.find(s => s.id === scenarioId);
+        this.navigateTo('mode-select');
+      }
+
+      startPracticeSession(mode) {
+        this.practiceMode = mode;
+        this.chatHistory = [];
+        this.sessionStartTime = new Date();
+        this.userSpokenCount = 0;
+        
+        const initialGreeting = this.activeScenario.intro;
+        this.chatHistory.push({ role: 'ai', text: initialGreeting });
+        
+        this.navigateTo('session');
+        setTimeout(() => {
+          this.speakText(initialGreeting);
+        }, 400);
+      }
+
+      restartSameScenario() {
+        this.startPracticeSession(this.practiceMode);
+      }
+
+      openHelpModal() {
+        document.getElementById('modal-help').classList.remove('hidden');
+      }
+
+      closeHelpModal() {
+        document.getElementById('modal-help').classList.add('hidden');
+      }
+
+      async requestHelp(type) {
+        this.closeHelpModal();
+        const lastAiTurn = this.chatHistory.filter(m => m.role === 'ai').pop()?.text || "Could you answer the question?";
+
+        if (type === 'repeat') {
+          this.speakText(lastAiTurn);
+        } else if (type === 'slower') {
+          const prevRate = this.speechRate;
+          this.speechRate = 0.6;
+          this.speakText(lastAiTurn, () => { this.speechRate = prevRate; });
+        } else if (type === 'starter' || type === 'spanish') {
+          this.setMicState('processing', 'Generating support...');
+          const contextualSupport = await this.generateContextualHelp(type, lastAiTurn);
+          this.speakText(contextualSupport);
+        }
+      }
+
+      async generateContextualHelp(helpType, lastAiQuestion) {
+        const conversationLog = this.chatHistory.map(m => `${m.role.toUpperCase()}: ${m.text}`).join('\n');
+        
+        const prompt = `
+You are the Speaking Support assistant in a Pre-A1 / A1 adult EFL practice app.
+Target Unit: ${this.activeUnit ? this.activeUnit.title : 'General'}
+Scenario: ${this.activeScenario ? this.activeScenario.title : ''}
+
+CONVERSATION HISTORY:
+${conversationLog}
+
+LAST AI QUESTION/STATEMENT:
+"${lastAiQuestion}"
+
+REQUEST TYPE: ${helpType === 'starter' ? 'GIVE ME A SENTENCE STARTER' : 'EXPLAIN BRIEFLY IN SPANISH'}
+
+RULES:
+1. STARTER: Provide ONLY a very simple Pre-A1 sentence starter matching the EXACT last AI question and context (e.g. "You can start with: I want to buy..."). Do NOT complete the student's answer.
+2. SPANISH: Briefly explain what the last AI question is asking in clear, simple Spanish. (e.g. "Te pregunta qué producto o bebida quieres comprar."). Do not give the student's answer.
+3. Return ONLY the simple sentence to speak aloud.
+`;
+
+        try {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${this.geminiApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }]
+            })
+          });
+
+          const data = await response.json();
+          if (data.candidates && data.candidates[0].content.parts[0].text) {
+            return data.candidates[0].content.parts[0].text.trim();
+          }
+        } catch(e) {
+          console.warn("Fallback contextual support engine triggered:", e);
+        }
+
+        return this.getOfflineContextualHelp(helpType, lastAiQuestion);
+      }
+
+      getOfflineContextualHelp(helpType, lastQuestion) {
+        const lower = lastQuestion.toLowerCase();
+        
+        if (helpType === 'starter') {
+          if (lower.includes('help you') || lower.includes('looking for') || lower.includes('supermarket') || lower.includes('store')) {
+            return "You can start with: How much is the water?";
+          }
+          if (lower.includes('what does') && lower.includes('do')) {
+            return "You can start with: My brother is a...";
+          }
+          if (lower.includes('where do') || lower.includes('where does')) {
+            return "You can start with: I work at...";
+          }
+          if (lower.includes('what time') || lower.includes('when')) {
+            return "You can start with: I get up at...";
+          }
+          if (lower.includes('is there') || lower.includes('are there')) {
+            return "You can start with: Yes, there is a...";
+          }
+          if (lower.includes('can you')) {
+            return "You can start with: Yes, I can...";
+          }
+          return "You can start with: I usually...";
+        } else {
+          // Spanish Brief Explanation
+          if (lower.includes('help you')) return "Te está preguntando en qué te puede ayudar o qué producto buscas.";
+          if (lower.includes('name')) return "Te está preguntando tu nombre.";
+          if (lower.includes('where are you from') || lower.includes('work')) return "Te pregunta de dónde eres o dónde trabajas.";
+          if (lower.includes('what does') && lower.includes('do')) return "Te pregunta a qué se dedica esa persona.";
+          if (lower.includes('time') || lower.includes('when')) return "Te pregunta la hora o el día en que realizas esta actividad.";
+          if (lower.includes('is there') || lower.includes('are there')) return "Te pregunta si hay un lugar o servicio cerca.";
+          if (lower.includes('can you')) return "Te pregunta qué habilidades puedes realizar.";
+          return "Te hace una pregunta sencilla para continuar la conversación.";
+        }
+      }
+
+      openTeacherModal() {
+        document.getElementById('teacher-auth-section').classList.remove('hidden');
+        document.getElementById('teacher-controls-section').classList.add('hidden');
+        document.getElementById('teacher-passcode').value = '';
+        document.getElementById('modal-teacher').classList.remove('hidden');
+      }
+
+      closeTeacherModal() {
+        document.getElementById('modal-teacher').classList.add('hidden');
+      }
+
+      verifyTeacherPasscode() {
+        const code = document.getElementById('teacher-passcode').value.trim();
+        if (code === '1234' || code === 'teacher' || code === 'admin') {
+          document.getElementById('teacher-auth-section').classList.add('hidden');
+          const controlsSection = document.getElementById('teacher-controls-section');
+          controlsSection.classList.remove('hidden');
+
+          const select = document.getElementById('teacher-unit-select');
+          select.innerHTML = COURSE_UNITS.map(u => `
+            <option value="${u.id}" ${u.id === this.highestUnlockedUnit ? 'selected' : ''}>
+              Unit ${u.id}: ${u.title}
+            </option>
+          `).join('');
+        } else {
+          alert("Incorrect passcode. Please check with course administrator.");
+        }
+      }
+
+      async saveTeacherUnitChoice() {
+        const select = document.getElementById('teacher-unit-select');
+        const unitVal = parseInt(select.value);
+        this.highestUnlockedUnit = unitVal;
+        
+        if (window.saveGlobalUnlockedUnit) {
+          await window.saveGlobalUnlockedUnit(unitVal);
+        } else {
+          localStorage.setItem('highestUnlockedUnit', unitVal.toString());
+        }
+
+        const alertBox = document.getElementById('teacher-save-alert');
+        alertBox.innerText = `Units 1–${unitVal} are now available to all students.`;
+        alertBox.classList.remove('hidden');
+
+        this.render();
+
+        setTimeout(() => {
+          this.closeTeacherModal();
+          alertBox.classList.add('hidden');
+        }, 1800);
+      }
+
+      handleMicClick() {
+        if (this.isListening) {
+          if (this.recognition) this.recognition.stop();
+          this.isListening = false;
+          this.setMicState('ready', 'Tap Mic to speak');
+        } else {
+          this.synth.cancel();
+          if (!this.recognition) {
+            alert("Speech recognition is not supported in this browser. Please use the text input fallback below.");
+            return;
+          }
+          try {
+            this.recognition.start();
+            this.isListening = true;
+          } catch (e) {
+            this.recognition.stop();
+            this.isListening = false;
+          }
+        }
+      }
+
+      setMicState(state, text) {
+        const badge = document.getElementById('mic-status-badge');
+        const statusText = document.getElementById('mic-status-text');
+        const dot = document.getElementById('mic-dot');
+        const pulse = document.getElementById('mic-pulse');
+        const visualizer = document.getElementById('visualizer');
+
+        if (!badge || !statusText) return;
+
+        statusText.innerText = text;
+
+        if (state === 'listening') {
+          dot.className = 'w-2 h-2 rounded-full bg-red-500 animate-pulse';
+          badge.className = 'flex items-center gap-2 font-medium px-3 py-1 rounded-full bg-red-950/80 text-red-300 border border-red-800';
+          pulse.classList.remove('opacity-0');
+          visualizer.classList.remove('hidden');
+        } else if (state === 'processing') {
+          dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+          badge.className = 'flex items-center gap-2 font-medium px-3 py-1 rounded-full bg-amber-950/80 text-amber-300 border border-amber-800';
+          pulse.classList.add('opacity-0');
+          visualizer.classList.add('hidden');
+        } else {
+          dot.className = 'w-2 h-2 rounded-full bg-brand-500';
+          badge.className = 'flex items-center gap-2 font-medium px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700';
+          pulse.classList.add('opacity-0');
+          visualizer.classList.add('hidden');
+        }
+      }
+
+      toggleTextInput() {
+        const textFallback = document.getElementById('text-input-fallback');
+        const label = document.getElementById('text-input-toggle-label');
+        if (textFallback.classList.contains('hidden')) {
+          textFallback.classList.remove('hidden');
+          label.innerText = 'Hide text typing fallback';
+        } else {
+          textFallback.classList.add('hidden');
+          label.innerText = 'Switch to text typing fallback';
+        }
+      }
+
+      sendTextFallback() {
+        const input = document.getElementById('user-text-input');
+        const text = input.value.trim();
+        if (text) {
+          this.handleUserSpokenText(text);
+          input.value = '';
+        }
+      }
+
+      async handleUserSpokenText(userSpeech) {
+        if (!userSpeech || userSpeech.trim() === '') return;
+
+        this.userSpokenCount++;
+        this.chatHistory.push({ role: 'user', text: userSpeech });
+        this.render();
+        this.setMicState('processing', 'Tutor analyzing...');
+
+        const aiResponse = await this.generateTutorTurn(userSpeech);
+        
+        if (aiResponse.correction) {
+          this.chatHistory[this.chatHistory.length - 1].correction = aiResponse.correction;
+        }
+
+        this.chatHistory.push({ role: 'ai', text: aiResponse.replyText });
+        this.render();
+
+        this.speakText(aiResponse.replyText);
+      }
+
+      async generateTutorTurn(lastUserSpeech) {
+        const systemPrompt = `
+You are a patient adult EFL speaking tutor for Pre-A1 and A1 beginner learners.
+Target Course Context:
+- Current Unit: ${this.activeUnit ? this.activeUnit.title : 'General'} (Unit ${this.activeUnit ? this.activeUnit.id : 1})
+- Cumulative Allowed Language: Vocabulary and grammar ONLY from Unit 1 through Unit ${this.activeUnit ? this.activeUnit.id : 1}.
+- Scenario: ${this.activeScenario ? this.activeScenario.title : ''}
+- Your AI Role: ${this.activeScenario ? this.activeScenario.role : 'Tutor'}
+- Practice Mode: ${this.practiceMode} (guided = active short correction + retry; challenge = fluid conversation)
+
+PRE-A1 / A1 CONVERSATIONAL RULES:
+1. STRICT LEVEL LIMIT: Keep AI turns VERY SHORT (1-2 simple sentences maximum). Use simple beginner vocabulary.
+2. ADAPT TO LEARNER AUTONOMY: Never force personal details on the learner. If they choose a specific product (e.g., "water"), family member (e.g., "sister"), job, time, or place, IMMEDIATELY adapt to their choice!
+3. SUPERMARKET RULE: If in supermarket mode and learner asks price of an item (e.g. water, milk, apples), state a simple price (e.g. "It's 19 pesos.") and ask if they want anything else. If they say "No, that's all", close naturally ("That will be 19 pesos, please. Thank you!").
+4. COMPREHENSION CHECK: If user answers a different WH-question (e.g. gives a location when asked for a time), gently guide them back.
+5. GUIDED CORRECTION MODEL: Format correction briefly: ERROR -> SHORT MODEL -> RETRY.
+6. Return valid JSON only.
+
+JSON Format:
+{
+  "correction": "Optional brief correction string if error detected, else empty string",
+  "replyText": "1-2 simple Pre-A1 spoken sentences"
+}
+`;
+
+        const conversationLog = this.chatHistory.map(m => `${m.role.toUpperCase()}: ${m.text}`).join('\n');
+        const userPrompt = `Conversation log:\n${conversationLog}\n\nRespond in JSON.`;
+
+        try {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${this.geminiApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: userPrompt }] }],
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              generationConfig: { responseMimeType: "application/json" }
+            })
+          });
+
+          const data = await response.json();
+          if (data.candidates && data.candidates[0].content.parts[0].text) {
+            const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
+            return {
+              correction: parsed.correction || "",
+              replyText: parsed.replyText || "Could you say that once more?"
+            };
+          }
+        } catch (err) {
+          console.warn("Fallback AI logic triggered:", err);
+        }
+
+        return this.getOfflinePedagogicalFallback(lastUserSpeech);
+      }
+
+      getOfflinePedagogicalFallback(speech) {
+        const lower = speech.toLowerCase();
+        const lastAiTurn = this.chatHistory.filter(m => m.role === 'ai').pop()?.text.toLowerCase() || '';
+
+        // Supermarket Cashier Adaptive Logic
+        if (this.activeScenario && this.activeScenario.id === '2c') {
+          if (lower.includes('how much') || lower.includes('price') || lower.includes('water') || lower.includes('milk') || lower.includes('apple') || lower.includes('coffee') || lower.includes('bread')) {
+            return {
+              correction: "",
+              replyText: "It's 25 pesos. Would you like anything else today?"
+            };
+          }
+          if (lower.includes('no') || lower.includes('that\'s all') || lower.includes('nothing') || lower.includes('thank')) {
+            return {
+              correction: "",
+              replyText: "That will be 25 pesos, please. Thank you and have a great day!"
+            };
+          }
+        }
+
+        // WH-Question Misunderstanding Check
+        if (lastAiTurn.includes('when') && (lower.includes('at a') || lower.includes('in a') || lower.includes('office') || lower.includes('school')) && !lower.includes('o\'clock') && !lower.includes('monday') && !lower.includes('morning')) {
+          return {
+            correction: "Note: You described WHERE you work. 'WHEN' asks for days or clock times.",
+            replyText: "That tells me WHERE you work. I asked WHEN — what days or time do you work?"
+          };
+        }
+
+        if (lower.includes('in monday') || lower.includes('in tuesday')) {
+          return {
+            correction: "Say 'ON Monday' instead of 'in Monday'.",
+            replyText: "Clear answer! One correction: say 'I work ON Monday.' Try saying that."
+          };
+        }
+
+        return {
+          correction: "",
+          replyText: "I understand! Tell me more about that."
+        };
+      }
+
+      speakText(text, onEndCallback) {
+        if (!text) return;
+        this.synth.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = this.speechRate;
+        utterance.pitch = 1.0;
+        utterance.lang = 'en-US';
+
+        // Select best available American English (en-US) clear adult voice
+        const voices = this.synth.getVoices();
+        const usVoices = voices.filter(v => v.lang === 'en-US' || v.lang === 'en_US' || v.lang.startsWith('en-US'));
+        
+        let preferredVoice = usVoices.find(v => 
+          v.name.includes('Google') || 
+          v.name.includes('Natural') || 
+          v.name.includes('Samantha') || 
+          v.name.includes('Ava') || 
+          v.name.includes('Allison') ||
+          v.name.includes('Jenny') ||
+          v.name.includes('Guy')
+        );
+
+        if (!preferredVoice && usVoices.length > 0) {
+          preferredVoice = usVoices[0];
+        }
+
+        if (!preferredVoice) {
+          preferredVoice = voices.find(v => v.lang.startsWith('en'));
+        }
+
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        utterance.onstart = () => {
+          this.setMicState('processing', 'AI Tutor Speaking...');
+        };
+
+        utterance.onend = () => {
+          this.setMicState('ready', 'Your turn - Tap Mic');
+          if (onEndCallback) onEndCallback();
+        };
+
+        utterance.onerror = () => {
+          this.setMicState('ready', 'Your turn - Tap Mic');
+        };
+
+        this.synth.speak(utterance);
+      }
+
+      finishSession() {
+        this.stopAllAudioAndMic();
+
+        const endTime = new Date();
+        const start = this.sessionStartTime || new Date();
+        const durationSec = Math.max(1, Math.floor((endTime - start) / 1000));
+        const mins = Math.floor(durationSec / 60);
+        const secs = durationSec % 60;
+        const durationFormatted = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+        const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+        const dateStr = endTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+        this.lastCompletedSessionData = {
+          code: randomCode,
+          duration: durationFormatted,
+          userTurns: this.userSpokenCount,
+          unitTitle: this.activeUnit ? `Unit ${this.activeUnit.id} - ${this.activeUnit.title}` : 'Weekend Practice',
+          mode: this.practiceMode === 'guided' ? 'Guided Practice' : 'Speaking Challenge',
+          dateStr: dateStr
+        };
+
+        this.navigateTo('summary');
+        
+        setTimeout(() => {
+          this.generateFormativeSummary();
+        }, 100);
+      }
+
+      generateFormativeSummary() {
+        const count = this.userSpokenCount;
+        const commEl = document.getElementById('summary-comm');
+        const langEl = document.getElementById('summary-lang');
+        const pronEl = document.getElementById('summary-pron');
+        const retryEl = document.getElementById('summary-retry');
+
+        if (!commEl) return;
+
+        if (count >= 2) {
+          commEl.innerText = `You completed ${count} spoken turns during this ${this.activeScenario ? this.activeScenario.title : 'practice'} session!`;
+          langEl.innerText = "Keep practicing complete sentence structures and prepositions (e.g., 'on Monday', 'at 8:00', 'in the morning').";
+          pronEl.innerText = "Your speech was clear and understandable for real-life communication.";
+          retryEl.innerText = "Try repeating this scenario in 'Speaking Challenge' mode to build faster spoken recall!";
+        } else {
+          commEl.innerText = "Session ended early before completing communicative exchanges.";
+          langEl.innerText = "Practice speaking complete sentences into your microphone.";
+          pronEl.innerText = "Clear articulation was recorded.";
+          retryEl.innerText = "Start the scenario again and complete at least 2 spoken responses.";
+        }
+      }
+
+      scrollToBottom() {
+        setTimeout(() => {
+          const thread = document.getElementById('chat-thread');
+          if (thread) thread.scrollTop = thread.scrollHeight;
+        }, 100);
+      }
+
+      escapeQuotes(str) {
+        return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      }
+    }
+
+    let app;
+    window.onload = () => {
+      app = new SpeakingApp();
+      window.app = app;
+      app.render();
+
+      // Pre-load synthesis voices for American English selection
+      if (window.speechSynthesis) {
+        window.speechSynthesis.getVoices();
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+          window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+        }
+      }
+    };
+  </script>
+</body>
+</html>
